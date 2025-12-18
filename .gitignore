@@ -2,5 +2,9 @@
 
 *.json
 *.txt
+*.zip
+*.html
+*.csv
+*.xlsx
 
 .DS_Store

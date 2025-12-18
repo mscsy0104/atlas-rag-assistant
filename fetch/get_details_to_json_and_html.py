@@ -3,12 +3,13 @@ from atlassian import Confluence
 import os
 import re
 from dotenv import load_dotenv
+from pathlib import Path
 import json
 
 load_dotenv()
 
 ATLASSIAN_API_KEY = os.getenv("ATLASSIAN_API_KEY")
-USERNAME = os.getenv("USERNAME")
+USERNAME = os.getenv("ATLASSIAN_USERNAME")
 
 
 test_url_samples = [
@@ -36,7 +37,8 @@ def extract_page_id_from_url(url):
     return None
 
 # Get page data for all URLs in test_url_samples
-for url in test_url_samples[:1]:
+for url in test_url_samples:
+# for url in test_url_samples[:1]:
 # for url in test_url_samples:
     page_id = extract_page_id_from_url(url)
     if page_id:
@@ -56,19 +58,19 @@ for url in test_url_samples[:1]:
             with open(f"page_{page_id}.json", "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=4, ensure_ascii=False)
             
-            # Also save just the body content for easier viewing
+            # Also save just the body content as HTML
             if 'body' in content:
                 body_content = content.get('body', {})
                 storage_content = body_content.get('storage', {}).get('value', '')
                 view_content = body_content.get('view', {}).get('value', '')
                 
-                with open(f"page_{page_id}_body.txt", "w", encoding="utf-8") as f:
-                    f.write("=== Storage Format (HTML/XML) ===\n")
+                # Save storage content as HTML file
+                output_path = Path('data') / f"page_{page_id}_body.html"
+                output_path.mkdir(parents=True, exist_ok=True)
+                with open(output_path, "w", encoding="utf-8") as f:
                     f.write(storage_content)
-                    f.write("\n\n=== View Format ===\n")
-                    f.write(view_content)
                 
-                print(f"\nBody content saved to page_{page_id}_body.txt")
+                print(f"\nBody content saved to page_{page_id}_body.html")
                 print(f"Storage content length: {len(storage_content)} characters")
                 print(f"View content length: {len(view_content)} characters")
         except Exception as e:
