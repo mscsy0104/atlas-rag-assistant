@@ -7,6 +7,11 @@ from pathlib import Path
 import csv
 from typing import List
 
+data_path = Path('/Users/sychoi/ProjectInsightHub/data')
+fetched_dir = data_path / 'fetched'
+processed_dir = data_path / 'processed'
+html_body_dir = fetched_dir / 'html_body'
+
 
 def find_table_context(table, soup) -> str:
     """
@@ -115,8 +120,8 @@ def extract_tables_to_csv(soup, output_prefix: str, page_dir: Path):
     
     Args:
         soup: BeautifulSoup 객체
-        output_prefix: 출력 파일명 접두사
-        page_dir: 페이지 디렉토리 경로
+        output_prefix: 출력 파일명 접두사 (예: page_3126853834_body)
+        page_dir: 페이지 디렉토리 경로 (예: data/processed/page_3126853834_body)
     """
     tables = soup.find_all('table')
     
@@ -137,11 +142,8 @@ def extract_tables_to_csv(soup, output_prefix: str, page_dir: Path):
         if not csv_rows:
             continue
         
-        # CSV 파일명 생성
-        if len(tables) == 1:
-            csv_filename = f"{output_prefix}_table.csv"
-        else:
-            csv_filename = f"{output_prefix}_table_{idx}.csv"
+        # CSV 파일명 생성: page_<page_id>_body_table_<순서번호>.csv
+        csv_filename = f"{output_prefix}_table_{idx}.csv"
         
         csv_path = table_dir / csv_filename
         
@@ -173,15 +175,19 @@ def parse_table_to_csv(html_path: Path, output_dir: Path = None):
     extract_tables_to_csv(soup, output_prefix, output_dir)
 
 
-if __name__ == '__main__':
-    import sys
-    
-    if len(sys.argv) < 2:
-        print("Usage: python parse_table_to_csv.py <html_file_path> [output_dir]")
-        sys.exit(1)
-    
-    html_file = Path(sys.argv[1])
-    output_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else None
-    
-    parse_table_to_csv(html_file, output_dir)
+def main():    
+    for html_path in html_body_dir.glob('*.html'):
+        html_path = Path(html_path)
+        
+        if not html_path.exists():
+            continue
 
+        page_dir = processed_dir / html_path.stem
+        page_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"\nProcessing {html_path.name}...")
+        parse_table_to_csv(html_path, page_dir)
+
+
+if __name__ == '__main__':
+    main()

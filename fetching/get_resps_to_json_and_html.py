@@ -3,6 +3,7 @@ from atlassian import Confluence
 import os
 import re
 from dotenv import load_dotenv
+from pathlib import Path
 import json
 
 load_dotenv()
@@ -12,7 +13,7 @@ USERNAME = os.getenv("ATLASSIAN_USERNAME")
 
 
 test_url_samples = [
-    # "https://crowdworksinc.atlassian.net/wiki/spaces/qQ0kE9gnws8Q/pages/3341123699/EV_+_25+Data+Labeling",
+    "https://crowdworksinc.atlassian.net/wiki/spaces/qQ0kE9gnws8Q/pages/3341123699/EV_+_25+Data+Labeling",
     "https://crowdworksinc.atlassian.net/wiki/spaces/qQ0kE9gnws8Q/pages/3400499247/EN_+_LLM+Evaluation+dataset+FT",
     "https://crowdworksinc.atlassian.net/wiki/spaces/qQ0kE9gnws8Q/pages/3126853834/EN_+SDS_KB+AI+Data+Readiness",
     "https://crowdworksinc.atlassian.net/wiki/spaces/qQ0kE9gnws8Q/pages/3285745686/GOV_+_2024+Vision+AI+Document+AI",
@@ -48,28 +49,40 @@ for url in test_url_samples:
         try:
             # Get page with full body content
             # expand parameter includes the body content (storage format contains the full HTML/XML)
+            # history 확장을 추가하여 첫 작성자(creator) 정보 포함
             content = confluence.get_page_by_id(
                 page_id=page_id,
-                expand='body.storage,body.view,version'
+                expand='body.storage,body.view,version,history'
             )
             print(type(content))
 
-            with open(f"page_{page_id}.json", "w", encoding="utf-8") as f:
+            # 디렉토리 생성은 한 번만 하면 됨. 루프 밖에서 한 번만 생성하도록 추천.
+            # 여기서는 단순 경로 연결만 (mkdir 반복 X)
+            root_dir = Path(__file__).parent.parent
+
+            data_dir = root_dir / 'data'
+            fetched_dir = data_dir / 'fetched'
+            json_dir = fetched_dir / 'json'
+            html_dir = fetched_dir / 'html_body'
+
+            json_path = json_dir / f"page_{page_id}.json"
+            html_path = html_dir / f"page_{page_id}_body.html"
+        
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=4, ensure_ascii=False)
+                print(f"\nFull json content saved to {json_path}")
             
-            # Also save just the body content for easier viewing
+            # Also save just the body content as HTML
             if 'body' in content:
                 body_content = content.get('body', {})
                 storage_content = body_content.get('storage', {}).get('value', '')
                 view_content = body_content.get('view', {}).get('value', '')
                 
-                with open(f"page_{page_id}_body.txt", "w", encoding="utf-8") as f:
-                    f.write("=== Storage Format (HTML/XML) ===\n")
+                # Save storage content as HTML file
+                with open(html_path, "w", encoding="utf-8") as f:
                     f.write(storage_content)
-                    f.write("\n\n=== View Format ===\n")
-                    f.write(view_content)
                 
-                print(f"\nBody content saved to page_{page_id}_body.txt")
+                print(f"\nHTML Body content saved to {html_path}")
                 print(f"Storage content length: {len(storage_content)} characters")
                 print(f"View content length: {len(view_content)} characters")
         except Exception as e:

@@ -63,30 +63,42 @@ def save_text_to_file(text: str, output_path: Path):
 
 def process_all_body_html_files(data_path: Path):
     """
-    data 폴더에서 모든 _body.html 파일을 찾아 텍스트를 추출하고 저장
+    data/processed 폴더에서 모든 page_*_body 폴더의 HTML 파일을 찾아 텍스트를 추출하고 저장
     
     Args:
         data_path: data 폴더 경로
     """
-    # 모든 _body.html 파일 찾기
-    html_files = list(data_path.rglob('*_body.html'))
+    processed_path = data_path / 'processed'
     
-    if not html_files:
-        print(f"No *_body.html files found in {data_path}")
+    if not processed_path.exists():
+        print(f"Error: Processed path not found: {processed_path}")
         return
     
-    print(f"Found {len(html_files)} HTML files to process\n")
+    # 모든 page_*_body 폴더 찾기
+    page_dirs = list(processed_path.glob('page_*_body'))
+    
+    if not page_dirs:
+        print(f"No page_*_body directories found in {processed_path}")
+        return
+    
+    print(f"Found {len(page_dirs)} page directories to process\n")
     
     success_count = 0
     error_count = 0
     
-    for html_file in html_files:
+    for page_dir in page_dirs:
+        # _body.html 파일 찾기
+        html_file = page_dir / f"{page_dir.name}.html"
+        
+        if not html_file.exists():
+            continue
+        
         try:
             # 텍스트 추출
             text = extract_text_from_html(html_file)
             
-            # 같은 폴더에 _text.txt 파일로 저장
-            output_file = html_file.parent / f"{html_file.stem}_text.txt"
+            # data/processed/page_<page_id>_body_text.txt로 저장
+            output_file = processed_path / f"{page_dir.name}_text.txt"
             
             # 파일로 저장
             save_text_to_file(text, output_file)
@@ -113,7 +125,7 @@ def main():
     """
     # 인자가 없거나 '--all' 옵션이 있으면 data 폴더의 모든 _body.html 파일 처리
     if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == '--all'):
-        data_path = Path('/Users/sychoi/ProjectInsightHub/fetch/data')
+        data_path = Path('/Users/sychoi/ProjectInsightHub/data')
         if not data_path.exists():
             print(f"Error: Data path not found: {data_path}")
             sys.exit(1)
@@ -145,8 +157,16 @@ def main():
         if len(sys.argv) > 2:
             output_file = Path(sys.argv[2])
         else:
-            # 입력 파일과 같은 디렉토리에 .txt 확장자로 저장
-            output_file = html_file.parent / f"{html_file.stem}_text.txt"
+            # 프로젝트 계획에 따라 data/processed/page_<page_id>_body_text.txt로 저장
+            # HTML 파일이 page_*_body 폴더 안에 있으면 그에 맞게 처리
+            if 'page_' in html_file.parent.name and '_body' in html_file.parent.name:
+                # page_dir에서 page_id 추출
+                page_id = html_file.parent.name.replace('page_', '').replace('_body', '')
+                processed_dir = html_file.parent.parent
+                output_file = processed_dir / f"page_{page_id}_body_text.txt"
+            else:
+                # 입력 파일과 같은 디렉토리에 .txt 확장자로 저장
+                output_file = html_file.parent / f"{html_file.stem}_text.txt"
         
         # 파일로 저장
         save_text_to_file(text, output_file)
