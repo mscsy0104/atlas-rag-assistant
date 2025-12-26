@@ -3,9 +3,6 @@ from pathlib import Path
 import re
 import json
 
-data_path = Path('/Users/sychoi/ProjectInsightHub/data/processed')
-data_path.mkdir(parents=True, exist_ok=True)
-
 
 def parse_html(html_path: Path) -> bs:
     with open(html_path, 'r', encoding='utf-8') as f:
@@ -16,6 +13,20 @@ def parse_html(html_path: Path) -> bs:
 
 def extract_top_level_toc(soup, page_id: str, processed_dir: Path):
     """제일 상단 목차만 추출하여 '1. 프로젝트 개요 > 2. 작업 내용 > ...' 형식으로 JSON에 저장"""
+    toc_filename = "html_body_toc.jsonl"
+    toc_path = processed_dir / toc_filename
+    
+    existing_ids = []
+    if toc_path.exists():
+        with open(toc_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = json.loads(line)
+                existing_ids.append(line['page_id'])
+
+    if page_id in existing_ids:
+        print(f"Page {page_id} already exists in {toc_path.relative_to(processed_dir.parent)}")
+        return
+
     # 모든 h2 태그를 순서대로 찾기
     headings = []
     for h2 in soup.find_all('h2'):
@@ -43,36 +54,36 @@ def extract_top_level_toc(soup, page_id: str, processed_dir: Path):
     
     # JSON 파일로 저장 (키: 문서 페이지, 값: toc)
     toc_data = {
-        page_id: toc_string
+        'page_id': page_id,
+        'toc': toc_string
     }
-    
-    toc_filename = f"page_{page_id}_toc.json"
-    toc_path = processed_dir / toc_filename
-    
-    with open(toc_path, 'w', encoding='utf-8') as f:
-        json.dump(toc_data, f, ensure_ascii=False, indent=2)
+
+    with open(toc_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(toc_data, ensure_ascii=False))
+        f.write('\n')
     
     print(f"Saved TOC to {toc_path.relative_to(processed_dir.parent)}")
 
 
 def main():
-    # data/processed 아래의 모든 page_*_body 폴더에서 _body.html 또는 _body_pretty.html 파일 찾기
-    for page_dir in data_path.glob('page_*_body'):
-        # _body_pretty.html 우선, 없으면 _body.html 사용
-        html_path = page_dir / f"{page_dir.name}_pretty.html"
-        if not html_path.exists():
-            html_path = page_dir / f"{page_dir.name}.html"
-        
+    data_path = Path('/Users/sychoi/ProjectInsightHub/data')
+    html_body_dir = data_path / 'fetched' / 'html_body'
+    html_body_dir.mkdir(parents=True, exist_ok=True)
+    
+    processed_dir = data_path / 'processed'
+
+    for html_path in html_body_dir.glob('*.html'):
         if not html_path.exists():
             continue
             
         soup = parse_html(html_path)
         
         # page_id 추출 (예: page_3126853834_body -> 3126853834)
-        page_id = page_dir.name.replace('page_', '').replace('_body', '')
         
+        page_id = html_path.stem.replace('page_', '').replace('_body', '')
+
         # 제일 상단 목차 추출 (JSON)
-        extract_top_level_toc(soup, page_id, data_path)
+        extract_top_level_toc(soup, page_id, processed_dir)
 
 
 if __name__ == '__main__':

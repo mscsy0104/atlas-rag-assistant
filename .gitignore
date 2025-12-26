@@ -7,11 +7,16 @@
 *.csv
 *.xlsx
 *.md
+*.jsonl
 
 .DS_Store
 
 # caches
 *.pyc
+__pycache__
 
 # 복사본
 * 복사본.*
+
+# test
+*.ipynb
