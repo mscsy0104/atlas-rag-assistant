@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
+import re
 
 load_dotenv()
 
@@ -12,6 +13,14 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def load_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         return f.read()
+
+def extract_page_id_from_basename(basename):
+    match = re.search(r'page_(\d+)_body_text', basename)
+    if match:
+        return match.group(1)
+        # return int(match.group(1))
+    else:
+        raise ValueError(f"Invalid basename: {basename}")
 
 def process_contract(raw_text_path, output_path):
     # 1. 프롬프트 및 원본 데이터 로드
@@ -29,7 +38,12 @@ def process_contract(raw_text_path, output_path):
     )
 
     # 3. 결과 저장
-    result = response.choices[0].message.content
+    page_id = extract_page_id_from_basename(raw_text_path)
+    print(f"Page ID: {page_id}")
+    result = {
+        "page_id": page_id,
+        "content": response.choices[0].message.content
+    }
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(result)
     print(f"정제 완료: {output_path}")
@@ -41,5 +55,3 @@ processed_dir = Path('data/processed')
 for raw_file in raw_dir.glob('*.txt'):
     processed_file = processed_dir / f"{raw_file.stem}.json"
     process_contract(raw_file, processed_file)
-
-# process_contract('data/raw/page_3400499247_body_text.txt', 'data/processed/result_3400499247.json')

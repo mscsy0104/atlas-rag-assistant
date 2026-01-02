@@ -158,7 +158,7 @@ def main():
         if table_string:
             results.append({
                 "page_id": page_id,
-                "value": table_string
+                "tables": table_string
             })
         else:
             print(f"Warning: {page_id}에 대한 테이블 데이터가 없습니다.")
